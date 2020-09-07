@@ -1,0 +1,15 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>
+      <div class="centralized">
+        <mat-icon class="icon">settings_input_component</mat-icon>
+        <span>Midi Connections</span>
+    </div>
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div *ngFor="let input of midi.inputs">
+       {{input.name}} - {{input.manufacturer}}: {{input.state}}
+    </div>
+  </mat-card-content>
+</mat-card>
