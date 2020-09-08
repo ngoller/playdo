@@ -6,7 +6,7 @@ import { OnInit } from '@angular/core';
 })
 export class MidiService {
   inputs: any[] = [];
-  noteEmitter: EventEmitter<Number> = new EventEmitter();
+  noteEmitter: EventEmitter<number> = new EventEmitter();
   constructor() { 
     this.accessMidi();
   }

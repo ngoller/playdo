@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import Vex from "vexflow";
-import {interval} from 'rxjs';
-import {MidiService} from '../midi.service';
+import { interval } from 'rxjs';
+import { MidiService } from '../midi.service';
+import { DisplayNote } from '../../display-note'
 
 @Component({
   selector: 'note-panel',
@@ -9,11 +10,14 @@ import {MidiService} from '../midi.service';
   styleUrls: ['./note-panel.component.sass']
 })
 export class NotePanelComponent implements OnInit {
-  notes: [Vex.Flow.StaveNote, Node][] = [];
-  i: number = 0;
-  music: Vex.Flow.Music = new Vex.Flow.Music();
+  notes: DisplayNote[] = [];
+  start: DOMHighResTimeStamp;
+  prev: DOMHighResTimeStamp;
+  boundUpdate: () => void;
 
-  constructor(private midi: MidiService) {}
+  constructor(private midi: MidiService) {
+    this.boundUpdate = this.update.bind(this);
+  }
 
   ngOnInit(): void {
     const VF = Vex.Flow;
@@ -21,33 +25,21 @@ export class NotePanelComponent implements OnInit {
     const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
     renderer.resize(500, 500);
     const context = renderer.getContext()
-    
+
     // Create a stave of width 10000 at position 10, 40 on the canvas.
     const stave = new VF.Stave(10, 10, 10000).addClef('treble');
     // Connect it to the rendering context and draw!
     stave.setContext(context).draw();
     const tickContext = new VF.TickContext();
 
-    this.midi.noteEmitter.subscribe((note) => {
-      if (this.i < this.notes.length) {
-        const n = this.notes[this.i];
-        const key = n[0].getKeys()[0];
-        const noteName = key[0];
-        const octave = Number(key[key.length-1]) + 1;
-        // get note value and move it based on octave
-        const absoluteNote = this.music.getNoteValue(noteName) + octave * VF.Music.NUM_TONES;
-        if (absoluteNote === note) {
-          n[0].setStyle({fillStyle: 'green', strokeStyle: 'green'});
-          this.i++; 
-        }
-        else {
-          n[0].setStyle({fillStyle: 'red', strokeStyle: 'red'});
-          this.i++;
-        }
-        n[0].draw();
-
-        console.log(absoluteNote + " - midi note: " + note);
-      }
+    window.requestAnimationFrame(this.boundUpdate);
+    this.midi.noteEmitter.subscribe((note: number) => {
+      // if there is active note... check to see if they played the right note
+      // if ('a' === note) {
+      // setStyle({fillStyle: 'green', strokeStyle: 'green'});
+      // } else {
+      // setStyle({fillStyle: 'red', strokeStyle: 'red'});
+      // }
     });
 
     interval(1000).subscribe(() => this.drawNote(tickContext, stave, context));
@@ -56,7 +48,7 @@ export class NotePanelComponent implements OnInit {
   getRandomNote(): Vex.Flow.StaveNote {
     const durations = ['8', '4', '2', '1'];
     let letter = String.fromCharCode('a'.charCodeAt(0) + Math.floor(Math.random() * 7))
-    let octave = `${4 + Math.floor(Math.random() * 1)}` 
+    let octave = `${4 + Math.floor(Math.random() * 1)}`
     let acc = '';
     const note = new Vex.Flow.StaveNote({
       clef: 'treble',
@@ -69,23 +61,44 @@ export class NotePanelComponent implements OnInit {
     return note;
   }
 
-  drawNote(tc: Vex.Flow.TickContext, s: Vex.Flow.Stave, c : Vex.IRenderContext): void {
+  drawNote(tc: Vex.Flow.TickContext, s: Vex.Flow.Stave, c: Vex.IRenderContext): void {
     const group = c.openGroup(); // create an SVG group element
-    
     const note = this.getRandomNote();
-    this.notes.push([note, group]);
+    const dn = new DisplayNote(note);
+    this.notes.push(dn);
 
     tc.addTickable(note);
     note.setContext(c).setStave(s)
 
-    tc.preFormat().setX(400)
     note.draw();
 
-    (group as any).classList.add('scroll');
+    // add initial transform
+    const t = document.getElementsByTagName("svg")[0].createSVGTransform();
+    dn.el().transform.baseVal.appendItem(t);
+
+    dn.setX(400);
+
     c.closeGroup();
     const box = (group as any).getBoundingClientRect();
+  }
 
-    (group as any).classList.add('scrolling'); // and now start it scrolling
-    setTimeout(() => (group as any).classList.add('hidden'), 5000);
+  update(timestamp) {
+    const speed = 1;
+    const SPEED_FACTOR = .1;
+    if (this.start === undefined) {
+      this.start = timestamp;
+      this.prev = timestamp;
+    }
+
+    const elapsed = timestamp - this.prev;
+    this.notes.forEach((n) => {
+      n.setX(n.x - elapsed * speed * SPEED_FACTOR);
+      if (n.x <= 0) {
+        n.remove();
+      }
+      n.updatePosition();
+    });
+    this.prev = timestamp;
+    window.requestAnimationFrame(this.boundUpdate);
   }
 }
