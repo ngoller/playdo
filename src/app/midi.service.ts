@@ -28,6 +28,6 @@ export class MidiService {
         console.log(e.port.name, e.port.manufacturer, e.port.state);
       };
     }
-    navigator.requestMIDIAccess().then(onMIDISuccess);
+    (navigator as any).requestMIDIAccess().then(onMIDISuccess);
   }
 }

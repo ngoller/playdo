@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import Vex from "vexflow";
-import { AnimationDurations } from '@angular/material/core';
-import {interval, Subscription} from 'rxjs';
+import {interval} from 'rxjs';
 import {MidiService} from '../midi.service';
 
 @Component({
@@ -82,11 +81,11 @@ export class NotePanelComponent implements OnInit {
     tc.preFormat().setX(400)
     note.draw();
 
-    group.classList.add('scroll');
+    (group as any).classList.add('scroll');
     c.closeGroup();
-    const box = group.getBoundingClientRect();
+    const box = (group as any).getBoundingClientRect();
 
-    group.classList.add('scrolling'); // and now start it scrolling
-    setTimeout(() => group.classList.add('hidden'), 5000);
+    (group as any).classList.add('scrolling'); // and now start it scrolling
+    setTimeout(() => (group as any).classList.add('hidden'), 5000);
   }
 }
