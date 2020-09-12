@@ -4,6 +4,8 @@ import { interval } from 'rxjs';
 import { MidiService } from '../midi.service';
 import { DisplayNote } from '../../display-note'
 
+const SPEED_FACTOR: number = .1;
+
 @Component({
   selector: 'note-panel',
   templateUrl: './note-panel.component.html',
@@ -13,7 +15,14 @@ export class NotePanelComponent implements OnInit {
   notes: DisplayNote[] = [];
   start: DOMHighResTimeStamp;
   prev: DOMHighResTimeStamp;
+  lastNoteTime: DOMHighResTimeStamp = performance.now();
+  nps: number = 1;
   boundUpdate: () => void;
+  speed: number = 1;
+  context: Vex.IRenderContext;
+  tickContext: Vex.Flow.TickContext;
+  stave: Vex.Flow.Stave;
+  progress: number = 0;
 
   constructor(private midi: MidiService) {
     this.boundUpdate = this.update.bind(this);
@@ -23,14 +32,14 @@ export class NotePanelComponent implements OnInit {
     const VF = Vex.Flow;
     const div = document.getElementById('vex-target')
     const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
-    renderer.resize(500, 500);
-    const context = renderer.getContext()
-
-    // Create a stave of width 10000 at position 10, 40 on the canvas.
-    const stave = new VF.Stave(10, 10, 10000).addClef('treble');
+    renderer.resize(1200, 500);
+    this.context = renderer.getContext()
+    this.context.scale(3,3);
+    // Create a stave of width 1000 at position 10, 40 on the canvas.
+    this.stave = new VF.Stave(10, 10, 1000).addClef('treble');
     // Connect it to the rendering context and draw!
-    stave.setContext(context).draw();
-    const tickContext = new VF.TickContext();
+    this.stave.setContext(this.context).draw();
+    this.tickContext = new VF.TickContext();
 
     window.requestAnimationFrame(this.boundUpdate);
     this.midi.noteEmitter.subscribe((note: number) => {
@@ -41,8 +50,6 @@ export class NotePanelComponent implements OnInit {
       // setStyle({fillStyle: 'red', strokeStyle: 'red'});
       // }
     });
-
-    interval(1000).subscribe(() => this.drawNote(tickContext, stave, context));
   }
 
   getRandomNote(): Vex.Flow.StaveNote {
@@ -76,28 +83,35 @@ export class NotePanelComponent implements OnInit {
     const t = document.getElementsByTagName("svg")[0].createSVGTransform();
     dn.el().transform.baseVal.appendItem(t);
 
-    dn.setX(400);
+    dn.setX(this.stave.getWidth());
 
     c.closeGroup();
     const box = (group as any).getBoundingClientRect();
   }
 
   update(timestamp) {
-    const speed = 1;
-    const SPEED_FACTOR = .1;
     if (this.start === undefined) {
       this.start = timestamp;
       this.prev = timestamp;
     }
-
     const elapsed = timestamp - this.prev;
+    if (1000/this.nps < timestamp - this.lastNoteTime) {
+      this.drawNote(this.tickContext, this.stave, this.context);
+      this.lastNoteTime = timestamp;
+    }
+
     this.notes.forEach((n) => {
-      n.setX(n.x - elapsed * speed * SPEED_FACTOR);
-      if (n.x <= 0) {
+      n.setX(n.x - elapsed * this.speed * SPEED_FACTOR);
+      if (n.x <= 0 && !n.removed) {
+        n.removed = true;
         n.remove();
+        this.progress++;
       }
       n.updatePosition();
     });
+
+
+
     this.prev = timestamp;
     window.requestAnimationFrame(this.boundUpdate);
   }
