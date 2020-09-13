@@ -16,7 +16,11 @@ export class NotePanelComponent implements OnInit {
   context: Vex.IRenderContext;
   tickContext: Vex.Flow.TickContext;
   stave: Vex.Flow.Stave;
-  
+  renderer: Vex.Flow.Renderer;
+  clefs: string[] = [
+    'alto', 'bass', 'treble'
+  ]
+
   // state
   notes: DisplayNote[] = [];
   start: DOMHighResTimeStamp;
@@ -25,6 +29,7 @@ export class NotePanelComponent implements OnInit {
   progress: number = 0;
   fail: number = 0;
   success: number = 0;
+  currentNoteIndex: number = 0;
 
   // settings
   clef: string =  'treble';
@@ -36,13 +41,19 @@ export class NotePanelComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.setupClef();
+    const VF = Vex.Flow;
+    const div = document.getElementById('vex-target')
+    this.renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+    this.renderer.resize(1400, 500);
 
+    this.reset()
+    
     this.midi.noteEmitter.subscribe((note: number) => {
-      const currentNote = this.notes[this.fail + this.success];
+      const currentNote = this.notes[this.currentNoteIndex];
       if (currentNote && note === currentNote.noteValue) {
         currentNote.succeed();
         this.success++;
+        this.currentNoteIndex++;
       } else if (currentNote) {
         currentNote.fail();
         this.fail++;
@@ -50,31 +61,40 @@ export class NotePanelComponent implements OnInit {
     });
 
    window.requestAnimationFrame(this.boundUpdate);
-
   }
 
-  setupClef(): void {
-    const VF = Vex.Flow;
-    const div = document.getElementById('vex-target')
-    const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
-    renderer.resize(1400, 500);
-    this.context = renderer.getContext()
+  reset(): void {
+    this.setupContext();
+    this.currentNoteIndex = 0;
+    this.fail = 0;
+    this.success = 0;
+    this.notes = [];
+    this.start = undefined;
+    this.prev = undefined;
+    this.lastNoteTime = performance.now();
+    this.progress = 0;
+  }
+
+  setupContext(): void {
+    this.context = this.renderer.getContext();
+    this.context.clear();
     this.context.scale(3, 3);
     const width = 1212;
-    this.stave = new VF.Stave(10, 10, width/3).addClef(this.clef);
+    this.stave = new Vex.Flow.Stave(10, 10, width/3).addClef(this.clef);
     this.stave.setContext(this.context).draw();
-    this.tickContext = new VF.TickContext();
+    this.tickContext = new Vex.Flow.TickContext();
   }
 
   @HostListener('document:keypress', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
-    const currentNote = this.notes[this.fail + this.success];
+    const currentNote = this.notes[this.currentNoteIndex];
     if (event.key === "d") {
       currentNote.fail();
       this.fail++;
     } else {
       currentNote.succeed();
       this.success++;
+      this.currentNoteIndex++;
     }
   }
 
@@ -82,25 +102,25 @@ export class NotePanelComponent implements OnInit {
     const durations = ['8', '4', '2', '1'];
     let letter = String.fromCharCode('a'.charCodeAt(0) + Math.floor(Math.random() * 7))
     let octave = `${4 + Math.floor(Math.random() * 1)}`
-    let acc = 'b';
+    let acc = '';
     const note = new Vex.Flow.StaveNote({
       clef: this.clef,
       keys: [`${letter}${acc}/${octave}`],
       duration: '4',
     })
    
-    note.addAccidental(0, new Vex.Flow.Accidental('b'));
+    if (acc) note.addAccidental(0, new Vex.Flow.Accidental(acc));
 
     return note;
   }
 
-  drawNote(tc: Vex.Flow.TickContext, s: Vex.Flow.Stave, c: Vex.IRenderContext): void {
+  drawNote(c: Vex.IRenderContext): void {
     const group = c.openGroup(); // create an SVG group element
     const note = this.getRandomNote();
 
     const voice = new Vex.Flow.Voice({num_beats: 1,  beat_value: 4});
     voice.addTickables([note]);
-    const formatter = new Vex.Flow.Formatter().joinVoices([voice]).format([voice], 1400);
+    const formatter = new Vex.Flow.Formatter().joinVoices([voice]).format([voice], 2000);
     voice.draw(this.context, this.stave);
 
     const dn = new DisplayNote(note);
@@ -124,7 +144,7 @@ export class NotePanelComponent implements OnInit {
     }
     const elapsed = timestamp - this.prev;
     if (1000 / this.nps < timestamp - this.lastNoteTime && this.progress < 100) {
-      this.drawNote(this.tickContext, this.stave, this.context);
+      this.drawNote(this.context);
       this.lastNoteTime = timestamp;
       this.progress++;
     }
@@ -133,13 +153,17 @@ export class NotePanelComponent implements OnInit {
       n.setX(n.x - elapsed * this.speed * SPEED_FACTOR);
       if (n.x <= 0 && !n.removed) {
         n.removed = true;
-        this.fail++;
-        n.remove();
+        if (!n.succeeded) {
+          this.currentNoteIndex++;
+        }
+        if (!n.failed && !n.succeeded) {
+          n.fail();
+          this.fail++;
+        }
+        setTimeout(() => n.remove(), 100);
       }
       n.updatePosition();
     });
-
-
 
     this.prev = timestamp;
     window.requestAnimationFrame(this.boundUpdate);
