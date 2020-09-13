@@ -7,7 +7,8 @@ export class DisplayNote {
   x: number = 0;
   y: number = 0;
   color: string = 'black';
-
+  failed: boolean = false;
+  succeeded: boolean = false;
   constructor(staveNote: Vex.Flow.StaveNote) {
     this.staveNote = staveNote;
     this.noteValue = DisplayNote.calcNoteValue(this.staveNote.getKeys()[0]);
@@ -57,6 +58,7 @@ export class DisplayNote {
 
   succeed() {
     this.color = 'green';
+    this.succeeded = true;
     this.updateColor();
     this.removed = true;
     setTimeout(() => this.remove(), 100);
@@ -64,8 +66,7 @@ export class DisplayNote {
 
   fail() {
     this.color = 'red';
+    this.failed = true;
     this.updateColor();
-    this.removed = true;
-    setTimeout(() => this.remove(), 100);
   }
 }

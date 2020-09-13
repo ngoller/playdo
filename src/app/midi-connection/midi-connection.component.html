@@ -1,4 +1,6 @@
-<span *ngIf="midi.inputs.length > 0" class="centralized">
-  <mat-icon class="icon">settings_input_component</mat-icon>
-  <span>{{midi.inputs[0].name}} - {{midi.inputs[0].manufacturer}}: {{midi.inputs[0].state}}</span>
+<span style="display:inline-block">
+  <span *ngIf="midi.inputs.length > 0" class="centralized">
+    <mat-icon class="icon">settings_input_component</mat-icon>
+    <span>{{midi.inputs[0].name}} - {{midi.inputs[0].manufacturer}}: {{midi.inputs[0].state}}</span>
+  </span>
 </span>

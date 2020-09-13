@@ -8,7 +8,7 @@
 <label>Note speed
   <mat-slider [(value)]="speed" thumbLabel tickInterval="10" step=".1" min="0" max="10"></mat-slider>
 </label>  
-<midi-connection></midi-connection>
 <span>Accuracy: {{100 * success/((fail+success)||1)}}%</span>
+<midi-connection style="float:right; margin-right: 16px"></midi-connection>
 <mat-progress-bar mode="determinate" style="height:30px" value="{{progress}}"></mat-progress-bar>
 

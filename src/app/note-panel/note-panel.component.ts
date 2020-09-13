@@ -25,6 +25,7 @@ export class NotePanelComponent implements OnInit {
   progress: number = 0;
   fail: number = 0;
   success: number = 0;
+  currentNoteIndex: number = 0;
 
   constructor(private midi: MidiService) {
     this.boundUpdate = this.update.bind(this);
@@ -44,10 +45,11 @@ export class NotePanelComponent implements OnInit {
 
     window.requestAnimationFrame(this.boundUpdate);
     this.midi.noteEmitter.subscribe((note: number) => {
-      const currentNote = this.notes[this.fail + this.success];
+      const currentNote = this.notes[this.currentNoteIndex];
       if (currentNote && note === currentNote.noteValue) {
         currentNote.succeed();
         this.success++;
+        this.currentNoteIndex++;
       } else if (currentNote) {
         currentNote.fail();
         this.fail++;
@@ -58,11 +60,12 @@ export class NotePanelComponent implements OnInit {
   @HostListener('document:keypress', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
     if (event.key === "d") {
-      this.notes[this.fail + this.success].fail();
+      this.notes[this.currentNoteIndex].fail();
       this.fail++;
     } else {
-      this.notes[this.fail + this.success].succeed();
+      this.notes[this.currentNoteIndex].succeed();
       this.success++;
+      this.currentNoteIndex++;
     }
   }
 
@@ -119,8 +122,12 @@ export class NotePanelComponent implements OnInit {
       n.setX(n.x - elapsed * this.speed * SPEED_FACTOR);
       if (n.x <= 0 && !n.removed) {
         n.removed = true;
-        this.fail++;
-        n.remove();
+        if (!n.failed && !n.succeeded) {
+          n.fail();
+          this.fail++;
+          setTimeout(() => n.remove(), 100);
+        }
+        this.currentNoteIndex++;
       }
       n.updatePosition();
     });
