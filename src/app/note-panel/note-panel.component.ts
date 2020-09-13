@@ -34,28 +34,25 @@ export class NotePanelComponent implements OnInit {
     const VF = Vex.Flow;
     const div = document.getElementById('vex-target')
     const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
-    renderer.resize(1200, 500);
+    renderer.resize(1400, 500);
     this.context = renderer.getContext()
     this.context.scale(3, 3);
-    // Create a stave of width 1000 at position 10, 40 on the canvas.
-    this.stave = new VF.Stave(10, 10, 1000).addClef('treble');
-    // Connect it to the rendering context and draw!
+    const width = 1212;
+    this.stave = new VF.Stave(10, 10, width/3).addClef('treble');
     this.stave.setContext(this.context).draw();
     this.tickContext = new VF.TickContext();
 
     window.requestAnimationFrame(this.boundUpdate);
     this.midi.noteEmitter.subscribe((note: number) => {
-      // if there is active note... check to see if they played the right note
-      // if ('a' === note) {
-      // setStyle({fillStyle: 'green', strokeStyle: 'green'});
-      // } else {
-      // setStyle({fillStyle: 'red', strokeStyle: 'red'});
-      // }
+      const currentNote = this.notes[this.fail + this.success];
+      if (currentNote && note === currentNote.noteValue) {
+        currentNote.succeed();
+        this.success++;
+      } else if (currentNote) {
+        currentNote.fail();
+        this.fail++;
+      }
     });
-
-
-
-
   }
 
   @HostListener('document:keypress', ['$event'])
@@ -100,7 +97,7 @@ export class NotePanelComponent implements OnInit {
     const t = document.getElementsByTagName("svg")[0].createSVGTransform();
     dn.el().transform.baseVal.appendItem(t);
 
-    dn.setX(this.stave.getWidth());
+    dn.setX(this.stave.getWidth() - 50);
 
     c.closeGroup();
     const box = (group as any).getBoundingClientRect();
