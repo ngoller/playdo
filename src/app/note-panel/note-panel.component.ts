@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import Vex from "vexflow";
-import { interval } from 'rxjs';
+import { Observable } from 'rxjs';
 import { MidiService } from '../midi.service';
 import { DisplayNote } from '../../display-note'
 
@@ -23,6 +23,8 @@ export class NotePanelComponent implements OnInit {
   tickContext: Vex.Flow.TickContext;
   stave: Vex.Flow.Stave;
   progress: number = 0;
+  fail: number = 0;
+  success: number = 0;
 
   constructor(private midi: MidiService) {
     this.boundUpdate = this.update.bind(this);
@@ -34,7 +36,7 @@ export class NotePanelComponent implements OnInit {
     const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
     renderer.resize(1200, 500);
     this.context = renderer.getContext()
-    this.context.scale(3,3);
+    this.context.scale(3, 3);
     // Create a stave of width 1000 at position 10, 40 on the canvas.
     this.stave = new VF.Stave(10, 10, 1000).addClef('treble');
     // Connect it to the rendering context and draw!
@@ -50,6 +52,21 @@ export class NotePanelComponent implements OnInit {
       // setStyle({fillStyle: 'red', strokeStyle: 'red'});
       // }
     });
+
+
+
+
+  }
+
+  @HostListener('document:keypress', ['$event'])
+  handleKeyboardEvent(event: KeyboardEvent) {
+    if (event.key === "d") {
+      this.notes[this.fail + this.success].fail();
+      this.fail++;
+    } else {
+      this.notes[this.fail + this.success].succeed();
+      this.success++;
+    }
   }
 
   getRandomNote(): Vex.Flow.StaveNote {
@@ -95,17 +112,18 @@ export class NotePanelComponent implements OnInit {
       this.prev = timestamp;
     }
     const elapsed = timestamp - this.prev;
-    if (1000/this.nps < timestamp - this.lastNoteTime) {
+    if (1000 / this.nps < timestamp - this.lastNoteTime && this.progress < 100) {
       this.drawNote(this.tickContext, this.stave, this.context);
       this.lastNoteTime = timestamp;
+      this.progress++;
     }
 
     this.notes.forEach((n) => {
       n.setX(n.x - elapsed * this.speed * SPEED_FACTOR);
       if (n.x <= 0 && !n.removed) {
         n.removed = true;
+        this.fail++;
         n.remove();
-        this.progress++;
       }
       n.updatePosition();
     });

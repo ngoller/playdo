@@ -6,6 +6,8 @@ export class DisplayNote {
   removed: boolean = false;
   x: number = 0;
   y: number = 0;
+  color: string = 'black';
+
   constructor(staveNote: Vex.Flow.StaveNote) {
     this.staveNote = staveNote;
     this.noteValue = DisplayNote.calcNoteValue(this.staveNote.getKeys()[0]);
@@ -16,8 +18,16 @@ export class DisplayNote {
   }
 
   updatePosition() {
-    if (this.el())
+    if (this.el()) {
       this.el().transform.baseVal.getItem(0).setTranslate(this.x, this.y);
+    }
+  }
+
+  updateColor() {
+    this.el().querySelectorAll('path').forEach((el) => {
+      el.setAttribute('fill', this.color);
+      el.setAttribute('stroke', this.color);
+    })
   }
 
   el(): any {
@@ -42,5 +52,20 @@ export class DisplayNote {
 
   remove() {
     this.el().remove();
+    this.removed = true;
+  }
+
+  succeed() {
+    this.color = 'green';
+    this.updateColor();
+    this.removed = true;
+    setTimeout(() => this.remove(), 100);
+  }
+
+  fail() {
+    this.color = 'red';
+    this.updateColor();
+    this.removed = true;
+    setTimeout(() => this.remove(), 100);
   }
 }
