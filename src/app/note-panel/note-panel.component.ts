@@ -12,37 +12,32 @@ const SPEED_FACTOR: number = .1;
   styleUrls: ['./note-panel.component.sass']
 })
 export class NotePanelComponent implements OnInit {
+  boundUpdate: () => void;
+  context: Vex.IRenderContext;
+  tickContext: Vex.Flow.TickContext;
+  stave: Vex.Flow.Stave;
+  
+  // state
   notes: DisplayNote[] = [];
   start: DOMHighResTimeStamp;
   prev: DOMHighResTimeStamp;
   lastNoteTime: DOMHighResTimeStamp = performance.now();
-  nps: number = 1;
-  boundUpdate: () => void;
-  speed: number = 1;
-  context: Vex.IRenderContext;
-  tickContext: Vex.Flow.TickContext;
-  stave: Vex.Flow.Stave;
   progress: number = 0;
   fail: number = 0;
   success: number = 0;
+
+  // settings
+  clef: string =  'treble';
+  speed: number = 1;
+  nps: number = 1;
 
   constructor(private midi: MidiService) {
     this.boundUpdate = this.update.bind(this);
   }
 
   ngOnInit(): void {
-    const VF = Vex.Flow;
-    const div = document.getElementById('vex-target')
-    const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
-    renderer.resize(1400, 500);
-    this.context = renderer.getContext()
-    this.context.scale(3, 3);
-    const width = 1212;
-    this.stave = new VF.Stave(10, 10, width/3).addClef('treble');
-    this.stave.setContext(this.context).draw();
-    this.tickContext = new VF.TickContext();
+    this.setupClef();
 
-    window.requestAnimationFrame(this.boundUpdate);
     this.midi.noteEmitter.subscribe((note: number) => {
       const currentNote = this.notes[this.fail + this.success];
       if (currentNote && note === currentNote.noteValue) {
@@ -53,15 +48,32 @@ export class NotePanelComponent implements OnInit {
         this.fail++;
       }
     });
+
+   window.requestAnimationFrame(this.boundUpdate);
+
+  }
+
+  setupClef(): void {
+    const VF = Vex.Flow;
+    const div = document.getElementById('vex-target')
+    const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+    renderer.resize(1400, 500);
+    this.context = renderer.getContext()
+    this.context.scale(3, 3);
+    const width = 1212;
+    this.stave = new VF.Stave(10, 10, width/3).addClef(this.clef);
+    this.stave.setContext(this.context).draw();
+    this.tickContext = new VF.TickContext();
   }
 
   @HostListener('document:keypress', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
+    const currentNote = this.notes[this.fail + this.success];
     if (event.key === "d") {
-      this.notes[this.fail + this.success].fail();
+      currentNote.fail();
       this.fail++;
     } else {
-      this.notes[this.fail + this.success].succeed();
+      currentNote.succeed();
       this.success++;
     }
   }
@@ -70,14 +82,14 @@ export class NotePanelComponent implements OnInit {
     const durations = ['8', '4', '2', '1'];
     let letter = String.fromCharCode('a'.charCodeAt(0) + Math.floor(Math.random() * 7))
     let octave = `${4 + Math.floor(Math.random() * 1)}`
-    let acc = '';
+    let acc = 'b';
     const note = new Vex.Flow.StaveNote({
-      clef: 'treble',
+      clef: this.clef,
       keys: [`${letter}${acc}/${octave}`],
       duration: '4',
     })
-
-    if (acc) note.addAccidental(0, new Vex.Flow.Accidental(acc));
+   
+    note.addAccidental(0, new Vex.Flow.Accidental('b'));
 
     return note;
   }
@@ -85,13 +97,14 @@ export class NotePanelComponent implements OnInit {
   drawNote(tc: Vex.Flow.TickContext, s: Vex.Flow.Stave, c: Vex.IRenderContext): void {
     const group = c.openGroup(); // create an SVG group element
     const note = this.getRandomNote();
+
+    const voice = new Vex.Flow.Voice({num_beats: 1,  beat_value: 4});
+    voice.addTickables([note]);
+    const formatter = new Vex.Flow.Formatter().joinVoices([voice]).format([voice], 1400);
+    voice.draw(this.context, this.stave);
+
     const dn = new DisplayNote(note);
     this.notes.push(dn);
-
-    tc.addTickable(note);
-    note.setContext(c).setStave(s)
-
-    note.draw();
 
     // add initial transform
     const t = document.getElementsByTagName("svg")[0].createSVGTransform();
@@ -100,6 +113,7 @@ export class NotePanelComponent implements OnInit {
     dn.setX(this.stave.getWidth() - 50);
 
     c.closeGroup();
+
     const box = (group as any).getBoundingClientRect();
   }
 
