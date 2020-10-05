@@ -8,8 +8,8 @@
 <label>Note speed
   <mat-slider [(value)]="speed" thumbLabel tickInterval="10" step=".1" min="0" max="10"></mat-slider>
 </label>  
-<span>Accuracy: {{100 * success/((fail+success)||1)}}%</span>
-<mat-form-field appearance="fill">
+<span>Accuracy: {{100 * success/((fail+success)||1) | number:'1.2-2' }}%</span>
+<mat-form-field style="margin-left: 8px" appearance="fill">
   <mat-label>Clef</mat-label>
   <mat-select (selectionChange)="reset()" [(value)]="clef">
     <mat-option *ngFor="let clef of clefs" [value]="clef">
@@ -17,6 +17,18 @@
     </mat-option>
   </mat-select>
 </mat-form-field>
+<span id="accidentals">
+  <mat-checkbox [(ngModel)]="flats" name="flat" style="margin-left: 8px">&#9837;</mat-checkbox>
+  <mat-checkbox [(ngModel)]="sharps" name="sharp" style="margin-left: 8px">#</mat-checkbox>
+</span>
+<span id="octaves" style="margin-left: 8px">
+  <label>Min Octave
+  <mat-slider [(value)]="minOctave" thumbLabel tickInterval="1" step="1" min="0" max="{{maxOctave}}"></mat-slider>
+  </label>
+  <label>Max Octave
+  <mat-slider [(value)]="maxOctave" thumbLabel tickInterval="1" step="1" min="{{minOctave}}" max="7"></mat-slider>  
+</label> 
+</span>
 <midi-connection style="float:right; margin-right: 16px"></midi-connection>
 <mat-progress-bar mode="determinate" style="height:30px" value="{{progress}}"></mat-progress-bar>
 
